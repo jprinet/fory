@@ -86,22 +86,29 @@ build:arm64 --copt=-march=armv8-a
 ###############################################################################
 # Develocity: Build Scans and remote build cache.
 ###############################################################################
-common:develocity --remote_cache=grpcs://develocity.example.ai
+
+# Build Scans, for every build. A failed Build Event Protocol upload would otherwise fail the
+# build, so Bazel is told not to wait for it -- without this, every build breaks until the access
+# key exists.
 common:develocity --bes_results_url=https://develocity.example.ai/build/
 common:develocity --bes_backend=grpcs://develocity.example.ai
 common:develocity --build_event_publish_all_actions=true
 common:develocity --noslim_profile
-
-# A failed Build Event Protocol upload fails the build unless Bazel is told not to wait for it --
-# without this, every build breaks until the access key exists.
 common:develocity --bes_upload_mode=nowait_for_upload_complete
 common:develocity --experimental_collect_system_network_usage
 
-# .bazelrc cannot evaluate expressions, so the CI gate is a config: read-only for everyone, and CI
-# runs with --config=ci to write. Keeping the default out of the develocity config avoids Bazel
-# warning that the flag was expanded from two configs at once.
-build --remote_upload_local_results=false
-test --remote_upload_local_results=false
+# The remote cache is deliberately NOT part of the default config. Bazel treats an unreachable or
+# unauthenticated --remote_cache as a build failure -- "Failed to query remote execution
+# capabilities", exit 34 -- and has no soft-fail flag for it (--remote_local_fallback and the
+# circuit breaker flags do not cover the capability query). So it is only switched on where
+# credentials exist: CI adds --config=remote-cache with the Authorization headers, and a developer
+# does the same in develocity.bazelrc.
+common:remote-cache --remote_cache=grpcs://develocity.example.ai
+
+# .bazelrc cannot evaluate expressions, so the CI write gate is a config: read-only by default,
+# and CI adds --config=ci on top to write.
+build:remote-cache --remote_upload_local_results=false
+test:remote-cache --remote_upload_local_results=false
 common:ci --remote_upload_local_results=true
 
 # 'test' inherits the 'build' options, so it must not repeat --config=develocity:
@@ -109,5 +116,6 @@ common:ci --remote_upload_local_results=true
 build --config=develocity
 query --config=develocity
 
-# Where a developer keeps their Authorization headers locally. Gitignored, never committed.
+# Where a developer keeps their --config=remote-cache and Authorization headers locally.
+# Gitignored, never committed.
 try-import %workspace%/develocity.bazelrc

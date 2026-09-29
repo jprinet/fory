@@ -397,6 +397,7 @@ case $1 in
       BAZEL_DV_FLAGS=()
       if [[ -n "${GITHUB_ACTIONS:-}" && -n "${DEVELOCITY_ACCESS_KEY:-}" ]]; then
         BAZEL_DV_FLAGS=(
+          --config=remote-cache
           --config=ci
           "--remote_cache_header=Authorization=Bearer ${DEVELOCITY_ACCESS_KEY}"
           "--bes_header=Authorization=Bearer ${DEVELOCITY_ACCESS_KEY}"
