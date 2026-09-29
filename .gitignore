@@ -168,3 +168,6 @@ integration_tests/idl_tests/dart/.dart_tool/
 **/pubspec.lock
 
 **/tmp/*
+
+# Develocity local Authorization headers, never committed
+develocity.bazelrc

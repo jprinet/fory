@@ -82,3 +82,32 @@ build:ubsan --copt=-g
 build:ubsan --copt=-fno-omit-frame-pointer
 build:ubsan --linkopt=-fsanitize=alignment,bool,bounds,bounds-strict,builtin,enum,integer-divide-by-zero,object-size,pointer-overflow,return,shift,signed-integer-overflow,unreachable,vla-bound,vptr
 build:arm64 --copt=-march=armv8-a
+
+###############################################################################
+# Develocity: Build Scans and remote build cache.
+###############################################################################
+common:develocity --remote_cache=grpcs://develocity.example.ai
+common:develocity --bes_results_url=https://develocity.example.ai/build/
+common:develocity --bes_backend=grpcs://develocity.example.ai
+common:develocity --build_event_publish_all_actions=true
+common:develocity --noslim_profile
+
+# A failed Build Event Protocol upload fails the build unless Bazel is told not to wait for it --
+# without this, every build breaks until the access key exists.
+common:develocity --bes_upload_mode=nowait_for_upload_complete
+common:develocity --experimental_collect_system_network_usage
+
+# .bazelrc cannot evaluate expressions, so the CI gate is a config: read-only for everyone, and CI
+# runs with --config=ci to write. Keeping the default out of the develocity config avoids Bazel
+# warning that the flag was expanded from two configs at once.
+build --remote_upload_local_results=false
+test --remote_upload_local_results=false
+common:ci --remote_upload_local_results=true
+
+# 'test' inherits the 'build' options, so it must not repeat --config=develocity:
+# Bazel then warns that the config was expanded more than once.
+build --config=develocity
+query --config=develocity
+
+# Where a developer keeps their Authorization headers locally. Gitignored, never committed.
+try-import %workspace%/develocity.bazelrc
