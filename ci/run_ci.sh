@@ -391,10 +391,11 @@ case $1 in
           BAZEL_TEST_CONFIG="--config=x86_64 ${BAZEL_TEST_CONFIG}"
           ;;
       esac
-      # Develocity: authenticate and allow remote cache writes, but only when a key is present.
-      # Without one the build still reads from the cache and publishes no scan, and must not fail.
+      # Develocity: authenticate and allow remote cache writes, but only on CI and only when a
+      # key is present. Without both the build still reads from the cache and publishes no scan,
+      # and must not fail.
       BAZEL_DV_FLAGS=()
-      if [[ -n "${DEVELOCITY_ACCESS_KEY:-}" ]]; then
+      if [[ -n "${GITHUB_ACTIONS:-}" && -n "${DEVELOCITY_ACCESS_KEY:-}" ]]; then
         BAZEL_DV_FLAGS=(
           --config=ci
           "--remote_cache_header=Authorization=Bearer ${DEVELOCITY_ACCESS_KEY}"
