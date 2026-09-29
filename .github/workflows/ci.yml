@@ -1321,6 +1321,8 @@ jobs:
 
   cpp:
     name: C++ CI
+    env:
+      DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]

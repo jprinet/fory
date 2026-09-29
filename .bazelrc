@@ -82,3 +82,40 @@ build:ubsan --copt=-g
 build:ubsan --copt=-fno-omit-frame-pointer
 build:ubsan --linkopt=-fsanitize=alignment,bool,bounds,bounds-strict,builtin,enum,integer-divide-by-zero,object-size,pointer-overflow,return,shift,signed-integer-overflow,unreachable,vla-bound,vptr
 build:arm64 --copt=-march=armv8-a
+
+###############################################################################
+# Develocity: Build Scans and remote build cache.
+###############################################################################
+
+# Build Scans, for every build. A failed Build Event Protocol upload would otherwise fail the
+# build, so Bazel is told not to wait for it -- without this, every build breaks until the access
+# key exists.
+common:develocity --bes_results_url=https://develocity.example.ai/build/
+common:develocity --bes_backend=grpcs://develocity.example.ai
+common:develocity --build_event_publish_all_actions=true
+common:develocity --noslim_profile
+common:develocity --bes_upload_mode=nowait_for_upload_complete
+common:develocity --experimental_collect_system_network_usage
+
+# The remote cache is deliberately NOT part of the default config. Bazel treats an unreachable or
+# unauthenticated --remote_cache as a build failure -- "Failed to query remote execution
+# capabilities", exit 34 -- and has no soft-fail flag for it (--remote_local_fallback and the
+# circuit breaker flags do not cover the capability query). So it is only switched on where
+# credentials exist: CI adds --config=remote-cache with the Authorization headers, and a developer
+# does the same in develocity.bazelrc.
+common:remote-cache --remote_cache=grpcs://develocity.example.ai
+
+# .bazelrc cannot evaluate expressions, so the CI write gate is a config: read-only by default,
+# and CI adds --config=ci on top to write.
+build:remote-cache --remote_upload_local_results=false
+test:remote-cache --remote_upload_local_results=false
+common:ci --remote_upload_local_results=true
+
+# 'test' inherits the 'build' options, so it must not repeat --config=develocity:
+# Bazel then warns that the config was expanded more than once.
+build --config=develocity
+query --config=develocity
+
+# Where a developer keeps their --config=remote-cache and Authorization headers locally.
+# Gitignored, never committed.
+try-import %workspace%/develocity.bazelrc
